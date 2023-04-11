@@ -1,6 +1,9 @@
+import numpy as np
+import torch
 from torch import nn
 import torch.nn.functional as 火炬函数
 
+from 工具屋.工具库 import 到中央处理器
 from 工具屋.解析配置库 import 解析模型配置
 
 
@@ -61,6 +64,7 @@ def 创建模块(模块定义列表):
             多个模块.add_module(f"我只看一次_{模块_索引}", 一个我只看一次层)
 
         模块列表.append(多个模块)
+        # noinspection PyUnboundLocalVariable
         输出_过滤器_列表.append(过滤器数量)
 
     return 超参数列表, 模块列表
@@ -105,4 +109,79 @@ class 黑夜网络(nn.Module):
     def __init__(self, 配置文件路径, 图片尺寸=416):
         super().__init__()
         self.模块定义列表 = 解析模型配置(配置文件路径)
-        创建模块
+        self.超参数列表, self.模块列表 = 创建模块(self.模块定义列表)
+        self.图片尺寸 = 图片尺寸
+        self.见过 = 0
+        self.头部_信息 = np.array([0, 0, 0, self.见过, 0], dtype=np.int32)
+
+    def forward(self, 输入, 多个目标=None):
+        图片维度 = 输入.shape[2]
+        损失值 = 0
+        层的输出列表, 我只看一次层的输出列表 = [], []
+        for 索引, (模块_定义, 模块) in enumerate(zip(self.模块定义列表, self.模块列表)):
+            if 模块_定义["类型"] in ["卷积", "上采样", "最大池化"]:
+                输入 = 模块(输入)
+            elif 模块_定义["路径"] == "路径":
+                输入 = torch.cat([层的输出列表[int(层索引)] for 层索引 in 模块_定义["层数"].split(",")], 1)
+            elif 模块_定义["路径"] == "捷径":
+                层索引 = int(模块_定义["来自"])
+                输入 = 层的输出列表[-1] + 层的输出列表[层索引]
+            elif 模块_定义["路径"] == "我只看一次":
+                输入, 层损失值 = 模块[0](输入, 多个目标, 图片维度)
+                损失值 += 层损失值
+                我只看一次层的输出列表.append(输入)
+            层的输出列表.append(输入)
+        我只看一次层的输出列表 = 到中央处理器(torch.cat(我只看一次层的输出列表, 1))
+
+        return 我只看一次层的输出列表 if 多个目标 is None else (损失值, 层的输出列表)
+
+    def 载入黑夜网络权重(self, 权重路径):
+        with open(权重路径, "rb") as 文件:
+            头部 = np.fromfile(文件, dtype=np.int32, count=5)
+            self.头部_信息 = 头部
+            self.见过 = 头部[3]
+            权重数组 = np.fromfile(文件, dtype=np.flot32)
+
+        # 载入骨干权重来建立近路
+        近路 = None
+        if "黑夜网络53.卷积.74" in 权重路径:
+            近路 = 75
+
+        指针 = 0
+        for 索引, (模块定义, 模块) in enumerate(zip(self.模块定义列表, self.模块列表)):
+            if 索引 == 近路:
+                break
+
+            if 模块定义["类型"] == "卷积":
+                卷积层 = 模块[0]
+                if 模块定义["批归一化"]:
+                    批归一化层 = 模块[1]
+                    偏置项数目 = 批归一化层.bias.numel()
+                    # 偏置项
+                    批归一化的偏置项 = torch.from_numpy(权重数组[指针:指针 + 偏置项数目]).view_as(批归一化层.bias)
+                    批归一化层.bias.data.copy_(批归一化的偏置项)
+                    指针 += 偏置项数目
+                    # 权重
+                    批归一化的权重 = torch.from_numpy(权重数组[指针:指针 + 偏置项数目]).view_as(批归一化层.weight)
+                    批归一化层.bias.weight.copy_(批归一化的权重)
+                    指针 += 偏置项数目
+                    # 运行时平均数
+                    批归一化运行时平均数 = torch.from_numpy(权重数组[指针:指针 + 偏置项数目]).view_as(
+                        批归一化层.running_mean)
+                    批归一化层.bias.running_mean.copy_(批归一化运行时平均数)
+                    指针 += 偏置项数目
+                    # 运行时方差
+                    批归一化运行时方差 = torch.from_numpy(权重数组[指针:指针 + 偏置项数目]).view_as(
+                        批归一化层.running_var)
+                    批归一化层.running_var.data.copy_(批归一化运行时方差)
+                    指针 += 偏置项数目
+                else:
+                    偏置项数目 = 卷积层.bias.numel()
+                    卷积层的偏置项 = torch.from_numpy(权重数组[指针:指针 + 偏置项数目]).view_as(卷积层.bias)
+                    卷积层.bias.data.copy_(卷积层的偏置项)
+                    指针 += 偏置项数目
+
+                权重的数目 = 卷积层.weight.numel()
+                卷积层的权重 = torch.from_numpy(权重数组[指针:指针 + 权重的数目]).view_as(卷积层.weight)
+                卷积层.weight.data.copy_(卷积层的权重)
+                指针 += 偏置项数目
