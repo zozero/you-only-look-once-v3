@@ -6,6 +6,7 @@ from 工具屋.工具库 import 载入分类列表, 权重初始归一化
 from 工具屋.解析配置库 import 解析数据配置
 from 工具屋.记录器 import 记录器
 from 模型库 import 黑夜网络
+from 配置屋.数据处理 import 数据集列表类
 from 配置屋.配置 import 参数
 
 if __name__ == '__main__':
@@ -29,3 +30,6 @@ if __name__ == '__main__':
             模型.load_state_dict(torch.load(参数.预训练权重_文件路径))
         else:
             模型.载入黑夜网络权重(参数.预训练权重_文件路径)
+
+    数据集 = 数据集列表类(训练_路径,是否增加=True,是否多比例=参数.允许多尺寸训练)
+    数据集.__getitem__(1)
