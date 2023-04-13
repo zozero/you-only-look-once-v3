@@ -3,6 +3,7 @@ import time
 
 import torch
 from torch.utils.data import DataLoader
+from torch.autograd import Variable
 
 from 工具屋.工具库 import 载入分类列表, 权重初始归一化
 from 工具屋.解析配置库 import 解析数据配置
@@ -65,6 +66,13 @@ if __name__ == '__main__':
 
     for 轮回 in range(参数.轮回数):
         模型.train()
-        起始时间=time.time()
-        for 批索引,(_,图片列表,目标列表) in enumerate(训练用数据加载器):
-            len()
+        起始时间 = time.time()
+        for 批索引, (_, 图片列表, 目标列表) in enumerate(训练用数据加载器):
+            已训批数 = len(训练用数据加载器) * 轮回 + 批索引
+
+            图片列表 = Variable(图片列表.to(设备))
+            目标列表 = Variable(目标列表.to(设备), requires_grad=False)
+            print("图片列表", 图片列表.shape)
+            print("目标列表", 目标列表.shape)
+            损失值, 输出列表 = 模型(图片列表, 目标列表)
+            损失值.backward()

@@ -101,8 +101,12 @@ class 我只看一次层(nn.Module):
         self.图片维度 = 图片维度
         self.网格_尺寸 = 0
 
-    def forward(self, 输入):
-        pass
+    def forward(self, 输入列表, 目标列表=None, 图片维度=None):
+        print(输入列表.shape)
+        浮点型张量 = torch.cuda.FloatTensor if 输入列表.is_cuda else torch.FloatTensor
+        长整型张量 = torch.cuda.LongTensor if 输入列表.is_cuda else torch.LongTensor
+        字节型张量 = torch.cuda.ByteTensor if 输入列表.is_cuda else torch.ByteTensor
+        exit()
 
 
 class 黑夜网络(nn.Module):
@@ -114,26 +118,26 @@ class 黑夜网络(nn.Module):
         self.见过 = 0
         self.头部_信息 = np.array([0, 0, 0, self.见过, 0], dtype=np.int32)
 
-    def forward(self, 输入, 多个目标=None):
-        图片维度 = 输入.shape[2]
+    def forward(self, 输入列表, 目标列表=None):
+        图片维度 = 输入列表.shape[2]
         损失值 = 0
         层的输出列表, 我只看一次层的输出列表 = [], []
         for 索引, (模块_定义, 模块) in enumerate(zip(self.模块定义列表, self.模块列表)):
             if 模块_定义["类型"] in ["卷积", "上采样", "最大池化"]:
-                输入 = 模块(输入)
-            elif 模块_定义["路径"] == "路径":
-                输入 = torch.cat([层的输出列表[int(层索引)] for 层索引 in 模块_定义["层数"].split(",")], 1)
-            elif 模块_定义["路径"] == "捷径":
+                输入列表 = 模块(输入列表)
+            elif 模块_定义["类型"] == "路径":
+                输入列表 = torch.cat([层的输出列表[int(层索引)] for 层索引 in 模块_定义["层数"].split(",")], 1)
+            elif 模块_定义["类型"] == "捷径":
                 层索引 = int(模块_定义["来自"])
-                输入 = 层的输出列表[-1] + 层的输出列表[层索引]
-            elif 模块_定义["路径"] == "我只看一次":
-                输入, 层损失值 = 模块[0](输入, 多个目标, 图片维度)
+                输入列表 = 层的输出列表[-1] + 层的输出列表[层索引]
+            elif 模块_定义["类型"] == "我只看一次":
+                输入列表, 层损失值 = 模块[0](输入列表, 目标列表, 图片维度)
                 损失值 += 层损失值
-                我只看一次层的输出列表.append(输入)
-            层的输出列表.append(输入)
+                我只看一次层的输出列表.append(输入列表)
+            层的输出列表.append(输入列表)
         我只看一次层的输出列表 = 到中央处理器(torch.cat(我只看一次层的输出列表, 1))
 
-        return 我只看一次层的输出列表 if 多个目标 is None else (损失值, 层的输出列表)
+        return 我只看一次层的输出列表 if 目标列表 is None else (损失值, 层的输出列表)
 
     def 载入黑夜网络权重(self, 权重路径):
         with open(权重路径, "rb") as 文件:
