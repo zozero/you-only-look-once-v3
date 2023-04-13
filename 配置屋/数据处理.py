@@ -1,4 +1,5 @@
 import os
+import random
 
 import numpy as np
 import torch
@@ -19,6 +20,11 @@ def 填充到正方形(图片张量, 填充值):
     图片张量 = 火炬函数.pad(图片张量, 填充, "constant", value=填充值)
 
     return 图片张量, 填充
+
+
+def 重置(图片张量, 尺寸):
+    图片张量 = 火炬函数.interpolate(图片张量.unsqueeze(0), size=尺寸, mode="nearest").squeeze(0)
+    return 图片张量
 
 
 class 数据集列表类(Dataset):
@@ -51,6 +57,7 @@ class 数据集列表类(Dataset):
             图片张量 = 图片张量.unsqueeze(0)
             图片张量 = 图片张量.expand(3, 图片张量.shape[1:])
 
+        # 填充图片成为正方形的图片
         _, 高, 宽 = 图片张量.shape
         高_因子, 宽_因子 = (高, 宽) if self.是否归一化标签 else (1, 1)
         图片张量, 填充 = 填充到正方形(图片张量, 0)
@@ -62,6 +69,7 @@ class 数据集列表类(Dataset):
         标签文件路径 = self.标签文件列表[索引 % len(self.图片文件列表)].rstrip()
         标签文件路径 = 图片基础路径 + 标签文件路径
         目标列表 = None
+        # 了解以下代码的用处，https://cocodataset.org/#people
         if os.path.exists(标签文件路径):
             盒形张量列表 = torch.from_numpy(np.loadtxt(标签文件路径).reshape(-1, 5))
             x1 = 宽_因子 * (盒形张量列表[:, 1] - 盒形张量列表[:, 3] / 2)
@@ -86,3 +94,22 @@ class 数据集列表类(Dataset):
                 图片张量, 目标列表 = 水平翻转(图片张量, 目标列表)
 
         return 图片路径, 图片张量, 目标列表
+
+    def 整理用函数(self, 一批数据):
+        路径列表, 图片列表, 目标列表 = list(zip(*一批数据))
+        目标列表 = [盒形列表 for 盒形列表 in 目标列表 if 盒形列表 is not None]
+        # 添加样本索引到目标列表
+        for 索引, 盒形列表 in enumerate(目标列表):
+            盒形列表[:, 0] = 索引
+        目标列表 = torch.cat(目标列表, 0)
+
+        # 每十批选择新的图片尺寸
+        if self.是否多比例 and self.批数 % 10 == 0:
+            self.图片尺寸 = random.choice(range(self.最小尺寸, self.最大尺寸 + 1, 32))
+
+        图片列表 = torch.stack([重置(图片张量, self.图片尺寸) for 图片张量 in 图片列表])
+        self.批数 += 1
+        return 路径列表, 图片列表, 目标列表
+
+    def __len__(self):
+        return len(self.图片文件列表)

@@ -1,6 +1,8 @@
 import os
+import time
 
 import torch
+from torch.utils.data import DataLoader
 
 from 工具屋.工具库 import 载入分类列表, 权重初始归一化
 from 工具屋.解析配置库 import 解析数据配置
@@ -31,5 +33,38 @@ if __name__ == '__main__':
         else:
             模型.载入黑夜网络权重(参数.预训练权重_文件路径)
 
-    数据集 = 数据集列表类(训练_路径,是否增加=True,是否多比例=参数.允许多尺寸训练)
-    数据集.__getitem__(1)
+    训练用数据集 = 数据集列表类(训练_路径, 是否增加=True, 是否多比例=参数.允许多尺寸训练)
+    训练用数据加载器 = torch.utils.data.DataLoader(
+        训练用数据集,
+        batch_size=参数.单批数,
+        shuffle=True,
+        num_workers=参数.中央处理器的线程数,
+        pin_memory=True,
+        collate_fn=训练用数据集.整理用函数
+    )
+
+    优化器 = torch.optim.Adam(模型.parameters())
+
+    指标 = [
+        "网格尺寸",
+        "损失值",
+        "x",
+        "y",
+        "宽",
+        "高",
+        "置信度",
+        # 暂时不能明确其意
+        "类别",
+        "类别_准确度",
+        "召回率50",
+        "召回率75",
+        "精确度",
+        "有对象的置信度",
+        "无对象的置信度",
+    ]
+
+    for 轮回 in range(参数.轮回数):
+        模型.train()
+        起始时间=time.time()
+        for 批索引,(_,图片列表,目标列表) in enumerate(训练用数据加载器):
+            len()
