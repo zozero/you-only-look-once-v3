@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import torch.nn.functional as 火炬函数
 
-from 工具屋.工具库 import 到中央处理器
+from 工具屋.工具库 import 到中央处理器, 构建目标列表
 from 工具屋.解析配置库 import 解析模型配置
 
 
@@ -53,14 +53,14 @@ def 创建模块(模块定义列表):
             过滤器数量 = 输出_过滤器_列表[1:][int(模块_定义["来自"])]
             多个模块.add_module(f"捷径_{模块_索引}", 空层())
         elif 模块_定义["类型"] == "我只看一次":
-            锚定盒_序号列表 = [int(x) for x in 模块_定义["掩码"].split(",")]
-            锚定盒 = [int(x) for x in 模块_定义["锚定盒"].split(",")]
-            锚定盒 = [(锚定盒[i], 锚定盒[i + 1]) for i in range(0, len(锚定盒), 2)]
-            锚定盒 = [锚定盒[i] for i in 锚定盒_序号列表]
+            锚定盒序号列表 = [int(x) for x in 模块_定义["掩码"].split(",")]
+            锚定盒列表 = [int(x) for x in 模块_定义["锚定盒"].split(",")]
+            锚定盒列表 = [(锚定盒列表[i], 锚定盒列表[i + 1]) for i in range(0, len(锚定盒列表), 2)]
+            锚定盒列表 = [锚定盒列表[i] for i in 锚定盒序号列表]
             分类数 = int(模块_定义["分类数"])
             图片尺寸 = int(超参数列表["高度"])
 
-            一个我只看一次层 = 我只看一次层(锚定盒, 分类数, 图片维度=图片尺寸)
+            一个我只看一次层 = 我只看一次层(锚定盒列表, 分类数, 图片维度=图片尺寸)
             多个模块.add_module(f"我只看一次_{模块_索引}", 一个我只看一次层)
 
         模块列表.append(多个模块)
@@ -87,25 +87,81 @@ class 空层(nn.Module):
 
 
 class 我只看一次层(nn.Module):
-    def __init__(self, 锚定盒, 分类数, 图片维度=416):
+    def __init__(self, 锚定盒列表, 分类数, 图片维度=416):
         super().__init__()
-        self.锚定盒 = 锚定盒
-        self.锚定盒数量 = len(锚定盒)
+        self.锚定盒列表 = 锚定盒列表
+        self.锚定盒数量 = len(锚定盒列表)
         self.分类数 = 分类数
-        self.忽视_阈值 = 0.5
+        self.忽略用阈值 = 0.5
         self.均方误差损失值函数 = nn.MSELoss()
         self.二元交叉熵损失值函数 = nn.BCELoss()
         self.对象_比例 = 1
         self.无对象_比例 = 100
         self.指标 = {}
         self.图片维度 = 图片维度
-        self.网格_尺寸 = 0
+        self.网格尺寸 = 0
+
+    def 计算网格漂移量(self, 网格尺寸, 是否使用统一计算设备架构=True):
+        self.网格尺寸 = 网格尺寸
+        浮点型张量 = torch.cuda.FloatTensor if 是否使用统一计算设备架构 else torch.FloatTensor
+        self.步长 = self.图片维度 / 网格尺寸
+        self.网格_x = torch.arange(网格尺寸).repeat(网格尺寸, 1).view([1, 1, 网格尺寸, 网格尺寸]).type(浮点型张量)
+        self.网格_y = torch.arange(网格尺寸).repeat(网格尺寸, 1).t().view([1, 1, 网格尺寸, 网格尺寸]).type(浮点型张量)
+        self.锚定盒比例列表 = 浮点型张量(
+            [(锚定盒宽 / self.步长, 锚定盒高 / self.步长) for 锚定盒宽, 锚定盒高 in self.锚定盒列表])
+        self.锚定盒宽列表 = self.锚定盒比例列表[:, 0:1].view((1, self.锚定盒数量, 1, 1))
+        self.锚定盒高列表 = self.锚定盒比例列表[:, 1:2].view((1, self.锚定盒数量, 1, 1))
 
     def forward(self, 输入列表, 目标列表=None, 图片维度=None):
-        print(输入列表.shape)
+        print("输入列表", 输入列表.shape)
         浮点型张量 = torch.cuda.FloatTensor if 输入列表.is_cuda else torch.FloatTensor
         长整型张量 = torch.cuda.LongTensor if 输入列表.is_cuda else torch.LongTensor
         字节型张量 = torch.cuda.ByteTensor if 输入列表.is_cuda else torch.ByteTensor
+
+        self.图片维度 = 图片维度
+        采样数 = 输入列表.size(0)
+        网格尺寸 = 输入列表.size(2)
+
+        预测的张量列表 = (
+            输入列表.view(采样数, self.锚定盒数量, self.分类数 + 5, 网格尺寸, 网格尺寸).permute(0, 1, 3, 4,
+                                                                                                2).contiguous())
+        print("预测的张量", 预测的张量列表.shape)
+        x = torch.sigmoid(预测的张量列表[..., 0])
+        y = torch.sigmoid(预测的张量列表[..., 1])
+        宽 = 预测的张量列表[..., 2]
+        高 = 预测的张量列表[..., 3]
+        预测的置信度列表 = torch.sigmoid(预测的张量列表[..., 4])
+        预测的分类列表 = torch.sigmoid(预测的张量列表[..., 5:])
+
+        if 网格尺寸 != self.网格尺寸:
+            self.计算网格漂移量(网格尺寸, 是否使用统一计算设备架构=x.is_cuda)
+
+        预测的盒子列表 = 浮点型张量(预测的张量列表[..., :4])
+        预测的盒子列表[..., 0] = x.data + self.网格_x
+        预测的盒子列表[..., 1] = y.data + self.网格_y
+        预测的盒子列表[..., 2] = torch.exp(宽.data) * self.锚定盒宽列表
+        预测的盒子列表[..., 3] = torch.exp(高.data) * self.锚定盒高列表
+
+        输出 = torch.cat(
+            (
+                预测的盒子列表.view(采样数, -1, 4) * self.步长,
+                预测的置信度列表.view(采样数, -1, 1),
+                预测的分类列表.view(采样数, -1, self.分类数)
+            ),
+            -1,
+        )
+
+        if 目标列表 is None:
+            return 输出, 0
+        else:
+            交并比分数列表, 分类掩码, 对象掩码, 目标的x, 目标的y, 目标的宽, 目标的高, 目标的分类, 目标的置信度 = 构建目标列表(
+                预测的盒子列表=预测的盒子列表,
+                预测的分类列表=预测的分类列表,
+                目标列表=目标列表,
+                锚定盒列表=self.锚定盒比例列表,
+                忽略用阈值=self.忽略用阈值
+            )
+
         exit()
 
 

@@ -2,6 +2,7 @@ import os
 import time
 
 import torch
+import torchvision
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 

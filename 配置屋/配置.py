@@ -11,7 +11,9 @@ import argparse
 解析器.add_argument("--图片尺寸", type=int, default=416, help="每张图片的尺寸")
 解析器.add_argument("--检查点间隔", type=int, default=1, help="保存模型权重的间隔")
 解析器.add_argument("--评估的间隔", type=int, default=1, help="验证集评估时的间隔")
-解析器.add_argument("--是否计算均值平均准确率", type=bool, default=False, help="如果 True 每十个批次计算一次均值平均准确率")
+解析器.add_argument("--是否计算均值平均准确率", type=bool, default=False,
+                    help="如果 True 每十个批次计算一次均值平均准确率")
 解析器.add_argument("--允许多尺寸训练", type=bool, default=True, help="允许多尺寸训练")
 参数 = 解析器.parse_args()
 print(参数)
+
