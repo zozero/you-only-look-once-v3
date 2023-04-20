@@ -1,6 +1,7 @@
+import datetime
 import os
 import time
-
+from terminaltables import AsciiTable
 import torch
 import torchvision
 from torch.utils.data import DataLoader
@@ -14,9 +15,10 @@ from 配置屋.数据处理 import 数据集列表类
 from 配置屋.配置 import 参数
 
 if __name__ == '__main__':
-    # 记录者 = 记录器("日志房")
+    # 记录者 = 记录器("D:/BaiduNetdiskDownload/log")
 
     设备 = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # 设备 = torch.device("cpu")
 
     os.makedirs("输出间", exist_ok=True)
     os.makedirs("检查点居室", exist_ok=True)
@@ -48,7 +50,7 @@ if __name__ == '__main__':
     优化器 = torch.optim.Adam(模型.parameters())
 
     # 各种类型的损失值指标以及其他指标
-    指标 = [
+    指标列表 = [
         "网格尺寸",
         "损失值",
         "x",
@@ -87,3 +89,38 @@ if __name__ == '__main__':
             # ----------------
 
             日志字符串 = "\n---- [轮回 %d/%d，批数 %d/%d] ----\n" % (轮回, 参数.轮回数, 批索引, len(训练用数据加载器))
+            指标表格 = [["指标列表", *[f"我只看一次层{索引}" for 索引 in range(len(模型.我只看一次层列表))]]]
+
+            for 索引, 指标 in enumerate(指标列表):
+                格式字典 = {键名: "%.6f" for 键名 in 指标列表}
+                格式字典["网格尺寸"] = "%2d"
+                格式字典["分类的准确度"] = "%.2f%%"
+                原生指标列表 = [格式字典[指标] % 我只看一次.指标字典.get(指标, 0) for 我只看一次 in 模型.我只看一次层列表]
+                指标表格 += [[指标, *原生指标列表]]
+
+                张量仪表盘日志 = []
+                for 序号, 我只看一次 in enumerate(模型.我只看一次层列表):
+                    for 名称, 指标值 in 我只看一次.指标字典.items():
+                        if 名称 != "网格尺寸":
+                            张量仪表盘日志 += [(f"{名称}_{序号 + 1}", 指标值)]
+                张量仪表盘日志 += [("损失值", 损失值.item())]
+
+            日志字符串 += AsciiTable(指标表格).table
+            日志字符串 += f"\n整体损失值 {损失值.item()}"
+
+            轮回剩余批数 = len(训练用数据加载器) - (批索引 + 1)
+            剩余时间 = datetime.timedelta(seconds=轮回剩余批数 * (time.time() - 起始时间) / (批索引 + 1))
+            日志字符串 += f"\n---- 剩余时间 {剩余时间}"
+
+            print(日志字符串)
+
+            模型.见过 += 图片列表.size(0)
+
+        if 轮回 % 参数.评估的间隔 == 0:
+            print("---- 正在评估模型 ----")
+            # 在验证集上评估模型
+            # 精确度,召回率,
+
+        if 轮回 % 参数.检查点间隔 == 0:
+            print("---- 正在保存模型 ----")
+            # torch.save(模型.state_dict(), f"检查点居室/我只看一次版本3_检查点_%d.pth" % 轮回)
