@@ -101,16 +101,17 @@ class 我只看一次层(nn.Module):
 
     def 计算网格漂移量(self, 网格尺寸, 是否使用统一计算设备架构=True):
         self.网格尺寸 = 网格尺寸
+        网格 = self.网格尺寸
         浮点型张量 = torch.cuda.FloatTensor if 是否使用统一计算设备架构 else torch.FloatTensor
-        self.步长 = self.图片维度 / 网格尺寸
-        self.网格_x = torch.arange(网格尺寸).repeat(网格尺寸, 1).view([1, 1, 网格尺寸, 网格尺寸]).type(浮点型张量)
-        self.网格_y = torch.arange(网格尺寸).repeat(网格尺寸, 1).t().view([1, 1, 网格尺寸, 网格尺寸]).type(浮点型张量)
+        self.步长 = self.图片维度 / self.网格尺寸
+        self.网格_x = torch.arange(网格).repeat(网格, 1).view([1, 1, 网格, 网格]).type(浮点型张量)
+        self.网格_y = torch.arange(网格).repeat(网格, 1).t().view([1, 1, 网格, 网格]).type(浮点型张量)
         self.锚定盒比例列表 = 浮点型张量([(锚定盒宽 / self.步长, 锚定盒高 / self.步长) for 锚定盒宽, 锚定盒高 in self.锚定盒列表])
         self.锚定盒宽列表 = self.锚定盒比例列表[:, 0:1].view((1, self.锚定盒数量, 1, 1))
         self.锚定盒高列表 = self.锚定盒比例列表[:, 1:2].view((1, self.锚定盒数量, 1, 1))
 
     def forward(self, 输入列表, 目标列表=None, 图片维度=None):
-        print("输入列表", 输入列表.shape)
+        # print("输入列表", 输入列表.shape)
         浮点型张量 = torch.cuda.FloatTensor if 输入列表.is_cuda else torch.FloatTensor
         长整型张量 = torch.cuda.LongTensor if 输入列表.is_cuda else torch.LongTensor
         字节型张量 = torch.cuda.ByteTensor if 输入列表.is_cuda else torch.ByteTensor
@@ -120,7 +121,7 @@ class 我只看一次层(nn.Module):
         网格尺寸 = 输入列表.size(2)
 
         预测的张量列表 = (输入列表.view(采样数, self.锚定盒数量, self.分类数 + 5, 网格尺寸, 网格尺寸).permute(0, 1, 3, 4, 2).contiguous())
-        print("预测的张量", 预测的张量列表.shape)
+        # print("预测的张量", 预测的张量列表.shape)
         x = torch.sigmoid(预测的张量列表[..., 0])
         y = torch.sigmoid(预测的张量列表[..., 1])
         宽 = 预测的张量列表[..., 2]
@@ -218,6 +219,8 @@ class 黑夜网络(nn.Module):
         损失值 = 0
         层的输出列表, 我只看一次层的输出列表 = [], []
         for 索引, (模块_定义, 模块) in enumerate(zip(self.模块定义列表, self.模块列表)):
+            if 索引 == 5:
+                print(索引)
             if 模块_定义["类型"] in ["卷积", "上采样", "最大池化"]:
                 输入列表 = 模块(输入列表)
             elif 模块_定义["类型"] == "路径":

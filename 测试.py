@@ -3,7 +3,7 @@ import torch.utils.data
 from torch.autograd import Variable
 import tqdm as 进度条
 
-from 工具屋.工具库 import 坐标和宽高转坐标和坐标, 统计并获取某批的指标数据, 计算每批分类平均精确度
+from 工具屋.工具库 import 坐标和宽高转坐标和坐标, 统计并获取某批的指标数据, 计算每批分类平均精确度, 非极大值抑制
 from 模型库 import 黑夜网络
 from 配置屋.数据处理 import 数据集列表类
 
@@ -26,6 +26,7 @@ def 评估(模型: 黑夜网络, 路径, 交并比阈值, 置信度阈值, 非�
 
         with torch.no_grad():
             输出列表 = 模型(图片列表)
+            输出列表 = 非极大值抑制(输出列表, 置信度阈值=置信度阈值, 非极大值抑制阈值=非极大值抑制阈值)
 
         样本指标列表 += 统计并获取某批的指标数据(输出列表, 目标列表, 交并比阈值)
 

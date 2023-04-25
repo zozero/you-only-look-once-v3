@@ -76,8 +76,8 @@ if __name__ == '__main__':
 
             图片列表 = Variable(图片列表.to(设备))
             目标列表 = Variable(目标列表.to(设备), requires_grad=False)
-            print("图片列表", 图片列表.shape)
-            print("目标列表", 目标列表.shape)
+            # print("图片列表", 图片列表.shape)
+            # print("目标列表", 目标列表.shape)
             损失值, 输出列表 = 模型(图片列表, 目标列表)
             损失值.backward()
 
@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
             模型.见过 += 图片列表.size(0)
 
-        if 轮回 % 参数.评估的间隔 == 0:
+        if 轮回 % 参数.评估的间隔 == 0 and False:
             print("---- 正在评估模型 ----")
             # 在验证集上评估模型
             # 指标f1中的f是指某个人名 Ronald Fisher，这个人提出了f分布，https://stats.stackexchange.com/questions/300975/why-is-f-score-called-f-score
@@ -129,9 +129,9 @@ if __name__ == '__main__':
                 ('验证_指标f1', 指标f1.mean())
             ]
 
-            平均精确度_表格 = [["索引", "分类名", "平均精确度."]]
+            平均精确度_表格 = [["索引", "分类名", "平均精确度"]]
             for 索引, 分类 in enumerate(平均精确度_分类):
-                平均精确度_表格 += [[分类, 分类名称列表[分类], "%.5f" % 平均精确度_分类[索引]]]
+                平均精确度_表格 += [[分类, 分类名称列表[分类], "%.5f" % 平均精确度[索引]]]
             print(AsciiTable(平均精确度_表格).table)
             print(f"--- 均值平均精确度{平均精确度.mean()}")
 
