@@ -1,11 +1,13 @@
 import datetime
 import os
+import random
 import time
 
 import numpy as np
 from terminaltables import AsciiTable
 import torch
 import torchvision
+from torch import nn
 from torch.utils.data import DataLoader
 from torch.autograd import Variable
 
@@ -18,15 +20,19 @@ from 配置屋.数据处理 import 数据集列表类
 from 配置屋.配置 import 参数
 
 # np.random.seed(1)
+# random.seed(1)
 # torch.manual_seed(1)
 # torch.cuda.manual_seed_all(1)
 # torch.backends.cudnn.deterministic = True
 # torch.backends.cudnn.benchmark = True
+#
+# 可用来启用数据调试，看到具体数据，这是在使用多个gpu时使用
+# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 if __name__ == '__main__':
     # 记录者 = 记录器("D:/BaiduNetdiskDownload/log")
 
-    设备 = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    设备 = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     os.makedirs("输出间", exist_ok=True)
     os.makedirs("检查点居室", exist_ok=True)
@@ -36,24 +42,27 @@ if __name__ == '__main__':
     验证_路径 = 数据配置["验证"]
     分类名称列表 = 载入分类列表(数据配置["名称列表"])
 
-    模型 = 黑夜网络(参数.模型定义_文件路径).to(设备)
-    模型.apply(权重初始归一化)
+    训练用数据集 = 数据集列表类(训练_路径, 是否增加=True, 是否多比例=参数.允许多尺寸训练)
+    训练用数据加载器 = torch.utils.data.DataLoader(
+        训练用数据集,
+        batch_size=参数.单批数,
+        shuffle=True,
+        num_workers=参数.中央处理器的线程数,
+        pin_memory=True,
+        collate_fn=训练用数据集.整理用函数
+    )
 
+    模型 = 黑夜网络(参数.模型定义_文件路径)
+    # if torch.cuda.device_count() > 1:
+    #     print("让我们使用", torch.cuda.device_count(), "图像处理单元吧!")
+    #     模型 = nn.DataParallel(模型)
+    模型.to(设备)
+    模型.apply(权重初始归一化)
     if 参数.预训练权重_文件路径:
         if 参数.预训练权重_文件路径.endswith(".pth"):
             模型.load_state_dict(torch.load(参数.预训练权重_文件路径))
         else:
             模型.载入黑夜网络权重(参数.预训练权重_文件路径)
-
-    训练用数据集 = 数据集列表类(训练_路径, 是否增加=True, 是否多比例=参数.允许多尺寸训练)
-    训练用数据加载器 = torch.utils.data.DataLoader(
-        训练用数据集,
-        batch_size=参数.单批数,
-        shuffle=False,
-        num_workers=参数.中央处理器的线程数,
-        pin_memory=True,
-        collate_fn=训练用数据集.整理用函数
-    )
 
     优化器 = torch.optim.Adam(模型.parameters())
 
@@ -124,6 +133,10 @@ if __name__ == '__main__':
 
             模型.见过 += 图片列表.size(0)
 
+        if 轮回 % 参数.检查点间隔 == 0:
+            print("---- 正在保存模型 ----")
+            torch.save(模型.state_dict(), f"检查点居室/我只看一次版本3_检查点_%d.pth" % 轮回)
+
         if 轮回 % 参数.评估的间隔 == 0:
             print("---- 正在评估模型 ----")
             # 在验证集上评估模型
@@ -141,7 +154,3 @@ if __name__ == '__main__':
                 平均精确度_表格 += [[分类, 分类名称列表[分类], "%.5f" % 平均精确度[索引]]]
             print(AsciiTable(平均精确度_表格).table)
             print(f"--- 均值平均精确度{平均精确度.mean()}")
-
-        if 轮回 % 参数.检查点间隔 == 0:
-            print("---- 正在保存模型 ----")
-            torch.save(模型.state_dict(), f"检查点居室/我只看一次版本3_检查点_%d.pth" % 轮回)
