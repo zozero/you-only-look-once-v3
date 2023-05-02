@@ -1,3 +1,4 @@
+import glob
 import os
 import random
 
@@ -25,6 +26,23 @@ def 填充到正方形(图片张量, 填充值):
 def 重置(图片张量, 尺寸):
     图片张量 = 火炬函数.interpolate(图片张量.unsqueeze(0), size=尺寸, mode="nearest").squeeze(0)
     return 图片张量
+
+
+class 图片文件夹(Dataset):
+    def __init__(self, 文件夹路径, 图片尺寸=416):
+        super().__init__()
+        self.文件列表 = sorted(glob.glob("%s/*.*" % 文件夹路径))
+        self.图片尺寸 = 图片尺寸
+
+    def __getitem__(self, 索引):
+        图片路径 = self.文件列表[索引 % len(self.文件列表)]
+        图片 = 变换.ToTensor()(Image.open(图片路径))
+        图片, _ = 填充到正方形(图片, 0)
+        图片 = 重置(图片, self.图片尺寸)
+        return 图片路径, 图片
+
+    def __len__(self):
+        return len(self.文件列表)
 
 
 class 数据集列表类(Dataset):
