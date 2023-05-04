@@ -52,8 +52,8 @@ def 评估(模型: 黑夜网络, 路径, 交并比阈值, 置信度阈值, 非�
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--图片文件夹", type=str, default="数据屋/样例", help="数据集路径")
-    parser.add_argument("--定义模型的文件", type=str, default="配置屋/我只看一次版本3.配置", help="定义模型的配置文件")
-    parser.add_argument("--权重文件路径", type=str, default="检查点居室/我只看一次版本3_检查点_0.pth", help="权重文件路径")
+    parser.add_argument("--定义模型的文件", type=str, default="配置屋/你只看一次版本3.配置", help="定义模型的配置文件")
+    parser.add_argument("--权重文件路径", type=str, default="检查点居室/你只看一次版本3_检查点.pth", help="权重文件路径")
     parser.add_argument("--分类名称文件路径", type=str, default="配置屋/coco.名称列表", help="分类名称文件路径")
     parser.add_argument("--置信度阈值", type=float, default=0.8, help="物体置信度阈值")
     parser.add_argument("--非极大值抑制阈值", type=float, default=0.4, help="非极大值抑制阈值")

@@ -26,11 +26,11 @@ from 配置屋.配置 import 参数
 # torch.backends.cudnn.deterministic = True
 # torch.backends.cudnn.benchmark = True
 #
-# 可用来启用数据调试，看到具体数据，这是在使用多个gpu时使用
+# 这是在使用多个gpu时使用，可用来启用数据调试，看到具体数据
 # os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 if __name__ == '__main__':
-    # 记录者 = 记录器("D:/BaiduNetdiskDownload/log")
+    # 记录者 = 记录器("D:/log")
 
     设备 = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -106,18 +106,18 @@ if __name__ == '__main__':
             # ----------------
 
             日志字符串 = "\n---- [轮回 %d/%d，批数 %d/%d] ----\n" % (轮回, 参数.轮回数, 批索引, len(训练用数据加载器))
-            指标表格 = [["指标列表", *[f"我只看一次层{索引}" for 索引 in range(len(模型.我只看一次层列表))]]]
+            指标表格 = [["指标列表", *[f"你只看一次层{索引}" for 索引 in range(len(模型.你只看一次层列表))]]]
 
             for 索引, 指标 in enumerate(指标列表):
                 格式字典 = {键名: "%.6f" for 键名 in 指标列表}
                 格式字典["网格尺寸"] = "%2d"
                 格式字典["分类的准确度"] = "%.2f%%"
-                原生指标列表 = [格式字典[指标] % 我只看一次.指标字典.get(指标, 0) for 我只看一次 in 模型.我只看一次层列表]
+                原生指标列表 = [格式字典[指标] % 你只看一次.指标字典.get(指标, 0) for 你只看一次 in 模型.你只看一次层列表]
                 指标表格 += [[指标, *原生指标列表]]
 
                 张量仪表盘日志 = []
-                for 序号, 我只看一次 in enumerate(模型.我只看一次层列表):
-                    for 名称, 指标值 in 我只看一次.指标字典.items():
+                for 序号, 你只看一次 in enumerate(模型.你只看一次层列表):
+                    for 名称, 指标值 in 你只看一次.指标字典.items():
                         if 名称 != "网格尺寸":
                             张量仪表盘日志 += [(f"{名称}_{序号 + 1}", 指标值)]
                 张量仪表盘日志 += [("损失值", 损失值.item())]
@@ -134,7 +134,7 @@ if __name__ == '__main__':
 
         if 轮回 % 参数.检查点间隔 == 0:
             print("---- 正在保存模型 ----")
-            torch.save(模型.state_dict(), f"检查点居室/我只看一次版本3_检查点_%d.pth" % 轮回)
+            torch.save(模型.state_dict(), f"检查点居室/你只看一次版本3_检查点_%d.pth" % 轮回)
 
         if 轮回 % 参数.评估的间隔 == 0:
             print("---- 正在评估模型 ----")
